@@ -6,10 +6,10 @@ export default defineConfig({
   plugins: [vue(),
   VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg','pwa-192x192.png','pwa-512x512.png', '180.png'],
       manifest: {
-        name: 'Your App Name',
-        short_name: 'AppName',
+        name: 'GruS Corner',
+        short_name: 'GruS Corner',
         description: 'A shared space for memos and plans',
         theme_color: '#ffffff',
         icons: [
@@ -22,9 +22,15 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: '180.png',
+            sizes: '180x180',
+            type: 'image/png',
+            purpose: 'any'
           }
         ]
-      }
+      },
     })
   ],
   base: '/EnD/',
