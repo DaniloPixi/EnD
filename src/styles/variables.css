@@ -1,0 +1,41 @@
+:root {
+  /* Colors */
+  --color-primary: #40e0d0;
+  --color-primary-hover: #32b8a8;
+  --color-secondary: #555555;
+  --color-secondary-hover: #666666;
+  --color-danger: #dc3545;
+  --color-danger-hover: #c82333;
+  --color-background: #1a1a1a;
+  --color-background-card: #2a2a2a;
+  --color-background-form: #1f1f1f;
+  --color-text-light: #e0e0e0;
+  --color-text-dark: #1e1e1e;
+  --color-text-muted: #aaaaaa;
+  --color-border-dark: #3a3a3a;
+  --color-accent-green: #40e0d033; /* 20% opacity of primary color */
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Fonts */
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.5rem;
+  --font-size-xl: 2rem;
+
+  /* Borders & Shadows */
+  --border-radius-sm: 5px;
+  --border-radius-md: 10px;
+  --border-radius-pill: 50px;
+  --box-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --box-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* Layout */
+  --max-content-width: 1280px;
+  --content-width-percentage: 70%;
+}
