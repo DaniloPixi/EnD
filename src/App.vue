@@ -6,12 +6,14 @@
       <div v-else>
         <header class="app-header">
           <div class="header-content">
-            <router-link to="/" class="home-link">
-              <h1>My App</h1>
-            </router-link>
+            
             <p v-if="currentUserNickname" class="user-label">
               Welcome, {{ currentUserNickname }}
             </p>
+
+            <router-link to="/" class="home-link">
+              <h1>My App</h1>
+            </router-link>
             <button @click="logout" class="logout-button">Logout</button>
           </div>
         </header>
@@ -102,6 +104,8 @@ const logout = async () => {
 </script>
 
 <style>
+/* In your global main.css or App.vue's style block */
+@import url('https://fonts.googleapis.com/css2?family=Allura&display=swap');
 /* Global styles for the app */
 :root {
   --color-background-body: #121212;
@@ -135,9 +139,9 @@ body,
 html {
   margin: 0;
   padding: 0;
-  font-family: "Montserrat", sans-serif;
+  font-family: 'Allura', cursive;
   background-color: var(--color-background-body);
-  color: var(--color-text-light);
+  
   min-height: 100vh;
 }
 
@@ -145,12 +149,12 @@ html {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  backdrop-filter: blur(10px);
+  background: linear-gradient(270deg, hsla(324, 100%, 34%, 1) 0%, hsla(0, 0%, 0%, 1) 5%, hsla(0, 0%, 0%, 1) 95%, hsla(332, 100%, 38%, 1) 100%);
 }
 
 .app-header {
-  background-color: var(--color-background-card);
   padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--color-border-dark);
   color: var(--color-primary);
   text-align: center;
 }
@@ -161,11 +165,12 @@ html {
   align-items: center;
   max-width: 1200px;
   margin: 0 auto;
+  background-color: hsla(0, 0%, 12%, 0);
 }
 
 .home-link {
   text-decoration: none;
-  color: inherit;
+  color: #C2005A;
 }
 
 .user-label {
@@ -209,5 +214,8 @@ html {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+.h1{
+  color: #C2005A;
 }
 </style>
