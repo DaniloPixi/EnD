@@ -4,12 +4,10 @@
     :class="{ expanded: isExpanded }"
     @mouseenter="expandOnHover"
     @mouseleave="collapseOnHover"
-    @click="toggleExpand"
   >
     <div class="sidebar-header">
       <h3>
         <span v-if="isExpanded">Filter Content</span>
-        <span v-else class="collapsed-icon">☰</span>
       </h3>
     </div>
 
@@ -87,28 +85,49 @@
       </div>
     </div>
   </aside>
+
+  <button v-if="isMobile" class="menu-button" @click="isExpanded = !isExpanded">
+    <span v-if="!isExpanded">☰</span>
+    <span v-else>✕</span>
+  </button>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-import { useStore } from "../useStore"; // <-- Use our custom composable
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useStore } from "../useStore";
 
 const store = useStore();
 
 const isExpanded = ref(false);
-const isHovering = ref(false);
-
-const toggleExpand = () => {
-  isExpanded.value = !isExpanded.value;
-};
+const isMobile = ref(false);
 
 const expandOnHover = () => {
-  isHovering.value = true;
+  if (!isMobile.value) {
+    isExpanded.value = true;
+  }
 };
 
 const collapseOnHover = () => {
-  isHovering.value = false;
+  if (!isMobile.value) {
+    isExpanded.value = false;
+  }
 };
+
+const updateIsMobile = () => {
+  isMobile.value = window.innerWidth < 768;
+  if (!isMobile.value) {
+    isExpanded.value = false; // Collapse the sidebar on desktop by default
+  }
+};
+
+onMounted(() => {
+  updateIsMobile();
+  window.addEventListener("resize", updateIsMobile);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", updateIsMobile);
+});
 
 const availableHashtags = ref([
   "Family",
@@ -163,30 +182,104 @@ const resetAllFilters = () => {
 </script>
 
 <style scoped>
+/* Mobile-first styles (default) */
 .sidebar-container {
-  /* This is the collapsed state */
-  width: 60px;
-  max-width: 60px;
+  width: 100%;
+  max-width: 100%;
   padding: 20px 10px;
   background-color: #1e1e1e;
-  border-right: 1px solid #3a3a3a;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
+  border-right: none;
+  box-shadow: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-out;
+}
+
+.sidebar-container.expanded {
+  transform: translateX(0);
+}
+
+.sidebar-content {
+  max-height: 9999px; /* Show content on mobile */
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-header {
+  display: none; /* Hide header on mobile for a cleaner look */
+}
+
+.menu-button {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1001;
+  background-color: #40e0d0;
+  border: none;
+  color: #1e1e1e;
+  padding: 10px 15px;
+  border-radius: 5px;
   cursor: pointer;
-  overflow: hidden;
-  transition: width 0.3s ease-out, max-width 0.3s ease-out, padding 0.3s ease-out;
+  font-size: 1.5em;
+  line-height: 1;
 }
 
-/* Expanded state (on click) and hover state */
-.sidebar-container.expanded,
-.sidebar-container:hover {
-  width: 25%;
-  max-width: 300px;
-  padding: 20px;
-  cursor: default;
+/* Desktop-specific styles (applied on screens wider than 768px) */
+@media (min-width: 768px) {
+  .sidebar-container {
+    /* Desktop default collapsed state */
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 60px;
+    max-width: 60px;
+    padding: 20px 10px;
+    border-right: 1px solid #3a3a3a;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transform: translateX(0);
+    transition: width 0.3s ease-out, max-width 0.3s ease-out, padding 0.3s ease-out;
+  }
+
+  /* Desktop expanded state */
+  .sidebar-container.expanded,
+  .sidebar-container:hover {
+    width: 25%;
+    max-width: 300px;
+    padding: 20px;
+    cursor: default;
+  }
+
+  .sidebar-header {
+    display: block; /* Show header on desktop */
+  }
+
+  .sidebar-content {
+    /* Desktop collapsed state hides content */
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  }
+
+  .sidebar-container.expanded .sidebar-content,
+  .sidebar-container:hover .sidebar-content {
+    /* Desktop expanded state shows content */
+    max-height: 9999px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .menu-button {
+    display: none; /* Hide the menu button on desktop */
+  }
 }
 
+/* The following are your original styles, they are now correctly placed after the media query */
 .sidebar-header {
   margin-bottom: 20px;
   padding-bottom: 10px;
@@ -208,7 +301,6 @@ const resetAllFilters = () => {
   display: block;
 }
 
-/* Hide header text when collapsed, and icon when expanded */
 .sidebar-container:not(.expanded) .sidebar-header h3 span:first-child,
 .sidebar-container:hover .sidebar-header h3 span:first-child {
   display: none;
@@ -216,31 +308,12 @@ const resetAllFilters = () => {
 .sidebar-container.expanded .sidebar-header h3 .collapsed-icon {
   display: none;
 }
-/* Re-enable hover behavior for the header text and icon */
+
 .sidebar-container:hover:not(.expanded) .sidebar-header h3 span:first-child {
   display: block;
 }
 .sidebar-container:hover:not(.expanded) .sidebar-header h3 .collapsed-icon {
   display: none;
-}
-
-.sidebar-content {
-  max-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  opacity: 0;
-  pointer-events: none;
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
-}
-
-/* Expanded state (on click) and hover state */
-.sidebar-container.expanded .sidebar-content,
-.sidebar-container:hover .sidebar-content {
-  max-height: 9999px; /* A much larger value to accommodate all content */
-  opacity: 1;
-  pointer-events: auto;
 }
 
 .filter-section {

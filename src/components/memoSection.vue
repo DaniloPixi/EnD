@@ -17,17 +17,18 @@
         </div>
 
         <div class="fileInputContainer">
-          <input
-            type="file"
-            @change="handleFileUpload"
-            ref="fileInput"
-            accept="image/*"
-            id="fileInput"
-          />
-          <label for="fileInput" class="customFileInputLabel">
-            {{ fileName || "Select an Image" }}
-          </label>
-        </div>
+  <input
+    type="file"
+    @change="handleFileUpload"
+    ref="fileInput"
+    accept="image/*"
+    multiple
+    id="fileInput"
+  />
+  <label for="fileInput" class="customFileInputLabel">
+    {{ fileName || "Select Images" }}
+  </label>
+</div>
         <p v-if="uploadProgress" class="uploadProgress">{{ uploadProgress }}</p>
 
         <div class="hashtagSelector">
@@ -61,70 +62,63 @@
 
       <div class="memos-grid">
         <div v-for="memo in filteredMemos" :key="memo.id" class="memo-card">
-          <div v-if="editingMemoId !== memo.id" class="memoDisplayMode">
-            <div v-if="memo.imageUrl" class="memo-photo-wrapper">
-              <img :src="memo.imageUrl" alt="Memo Image" class="memo-photo" />
-            </div>
-            <div class="memo-content">
-              <p>{{ memo.content }}</p>
-              <div class="memoMeta">
-                <div class="memoMetaRow">
-                  <span class="memoCreator"
-                    >By: {{ userNicknames[memo.creator] || "..." }}</span
-                  >
-                  <small>{{ formatDate(memo.timestamp) }}</small>
-                </div>
-                <div class="memoTags">
-                  <span v-for="tag in memo.tags" :key="tag" class="memoTag"
-                    >#{{ tag }}</span
-                  >
-                </div>
-              </div>
-              <div class="memoActions">
-                <button @click="startEditing(memo)" class="editButton">Edit</button>
-                <button @click="deleteMemo(memo.id)" class="deleteButton">Delete</button>
-              </div>
-            </div>
-          </div>
-          <div v-else class="memoEditMode">
-            <textarea v-model="editingContent" class="editTextarea"></textarea>
+  <div v-if="memo.imageUrls && memo.imageUrls.length" class="memo-photos-grid">
+    <div v-for="(url, index) in memo.imageUrls" :key="index" class="memo-photo-wrapper">
+      <img :src="url" alt="Memo Image" class="memo-photo" />
+    </div>
+  </div>
 
-            <div class="fileInputContainer">
-              <input
-                type="file"
-                @change="handleEditFileUpload"
-                ref="editingFileInput"
-                accept="image/*"
-                id="editFileInput"
-              />
-              <label for="editFileInput" class="customFileInputLabel">
-                {{ editingFile ? editingFile.name : "Select a new image" }}
-              </label>
-            </div>
-            <p v-if="uploadProgress" class="uploadProgress">{{ uploadProgress }}</p>
+  <div class="memo-content" v-if="editingMemoId !== memo.id">
+    <p v-html="memo.content"></p>
+    <div class="memoMeta">
+      <div class="memoMetaRow">
+        <span class="memoCreator">{{ userNicknames[memo.creator] || 'Loading...' }}</span>
+        <span class="memoTimestamp">{{ formatDate(memo.timestamp) }}</span>
+      </div>
+      <div class="memoTags" v-if="memo.tags && memo.tags.length">
+        <span v-for="tag in memo.tags" :key="tag" class="memoTag">#{{ tag }}</span>
+      </div>
+    </div>
+    <div class="memoActions">
+      <button class="editButton" @click="startEditing(memo)">Edit</button>
+      <button class="deleteButton" @click="deleteMemo(memo.id)">Delete</button>
+    </div>
+  </div>
 
-            <div class="hashtagSelector">
-              <h4>Edit Hashtags (max {{ maxHashtagsPerItem }}):</h4>
-              <div class="hashtagButtons">
-                <HashtagButton
-                  v-for="tag in availableHashtags"
-                  :key="tag"
-                  :tag="tag"
-                  :isSelected="selectedEditedMemoHashtags.includes(tag)"
-                  :isDisabled="
-                    selectedEditedMemoHashtags.length >= maxHashtagsPerItem &&
-                    !selectedEditedMemoHashtags.includes(tag)
-                  "
-                  @click="toggleHashtag(tag, 'edit')"
-                />
-              </div>
-            </div>
-            <div class="memoEditActions">
-              <button @click="saveEdit(memo.imageUrl)" class="saveButton">Save</button>
-              <button @click="cancelEdit" class="cancelButton">Cancel</button>
-            </div>
-          </div>
-        </div>
+  <div class="memoEditMode" v-else>
+  <textarea v-model="editingContent" class="editTextarea"></textarea>
+  <div class="hashtagSelector">
+    <div class="hashtagButtons">
+      <HashtagButton
+        v-for="tag in availableHashtags"
+        :key="tag"
+        :tag="tag"
+        :isSelected="selectedEditedMemoHashtags.includes(tag)"
+        @click="toggleHashtag(tag, 'edit')"
+      />
+    </div>
+  </div>
+
+  <div v-if="editingFiles && editingFiles.length > 0" class="editing-photos-grid">
+    <div v-for="(url, index) in editingFiles" :key="index" class="editing-photo-item">
+      <img :src="url" alt="Memo Image" class="editing-photo" />
+      <button @click="removeEditingImage(index)" class="remove-photo-button">×</button>
+    </div>
+  </div>
+
+  <div class="fileInputContainer">
+    <input type="file" multiple @change="handleEditFileUpload" />
+    <label class="customFileInputLabel">
+      {{ editingFiles.length > 0 ? `${editingFiles.length} file(s) selected` : 'Select Images' }}
+    </label>
+  </div>
+
+  <div class="memoEditActions">
+    <button class="saveButton" @click="saveEdit(memo)">Save</button>
+    <button class="cancelButton" @click="cancelEdit">Cancel</button>
+  </div>
+</div>
+</div>
       </div>
     </div>
   </div>
@@ -136,266 +130,289 @@ import { useStore } from "../useStore";
 import Sidebar from "./sidebar.vue";
 import HashtagButton from "./shared/hashtagButton.vue";
 import { auth, db } from "../firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 
 const store = useStore();
 const memos = computed(() => store.state.memos);
 const isInputFormVisible = ref(false);
 const newMemoContent = ref("");
 const fileInput = ref(null);
-const selectedFile = ref(null);
-const fileName = ref("");
+// Updated to an array for multiple files
+const selectedFiles = ref([]);
+const fileName = computed(() => {
+    return selectedFiles.value.length
+        ? `${selectedFiles.value.length} file(s) selected`
+        : "Select Images";
+});
 const uploadProgress = ref("");
 const editingMemoId = ref(null);
 const editingContent = ref("");
-const editingFile = ref(null);
+// Updated to an array for editing files
+const editingFiles = ref([]);
+// Removed editingFile since it's now editingFiles
 
 const selectedNewMemoHashtags = ref([]);
 const selectedEditedMemoHashtags = ref([]);
 const userNicknames = ref({});
 
 const availableHashtags = ref([
-  "Family",
-  "Friends",
-  "Travel",
-  "Event",
-  "Work",
-  "Home",
-  "Food",
-  "Fun",
-  "Important",
-  "Reminder",
+  "Family",
+  "Friends",
+  "Travel",
+  "Event",
+  "Work",
+  "Home",
+  "Food",
+  "Fun",
+  "Important",
+  "Reminder",
 ]);
 const maxHashtagsPerItem = 4;
 const filterSettings = computed(() => store.state.filterSettings);
 
 const formatDate = (timestamp) => {
-  if (!timestamp) return "No Date";
-  if (timestamp.seconds) {
-    return new Date(timestamp.seconds * 1000).toLocaleDateString();
-  }
-  return new Date(timestamp).toLocaleDateString();
+  if (!timestamp) return "No Date";
+  if (timestamp.seconds) {
+    return new Date(timestamp.seconds * 1000).toLocaleDateString();
+  }
+  return new Date(timestamp).toLocaleDateString();
 };
 
 const filteredMemos = computed(() => {
-  return memos.value.filter((memo) => {
-    const hasTag =
-      filterSettings.value.hashtags.length === 0 ||
-      filterSettings.value.hashtags.every((tag) => memo.tags.includes(tag));
+  return memos.value.filter((memo) => {
+    const hasTag =
+      filterSettings.value.hashtags.length === 0 ||
+      filterSettings.value.hashtags.every((tag) => memo.tags.includes(tag));
 
-    const isWithinDateRange = () => {
-      if (filterSettings.value.dateRange === "all") return true;
-      const memoDate = new Date(memo.timestamp.seconds * 1000);
-      const now = new Date();
+    const isWithinDateRange = () => {
+      if (filterSettings.value.dateRange === "all") return true;
+      const memoDate = new Date(memo.timestamp.seconds * 1000);
+      const now = new Date();
 
-      switch (filterSettings.value.dateRange) {
-        case "today":
-          return memoDate.toDateString() === now.toDateString();
-        case "last7days":
-          const sevenDaysAgo = new Date(now);
-          sevenDaysAgo.setDate(now.getDate() - 7);
-          return memoDate >= sevenDaysAgo;
-        case "last30days":
-          const thirtyDaysAgo = new Date(now);
-          thirtyDaysAgo.setDate(now.getDate() - 30);
-          return memoDate >= thirtyDaysAgo;
-        case "specific":
-          if (!filterSettings.value.date) return true;
-          const specificDate = new Date(filterSettings.value.date);
-          return memoDate.toDateString() === specificDate.toDateString();
-      }
-    };
-    return hasTag && isWithinDateRange();
-  });
+      switch (filterSettings.value.dateRange) {
+        case "today":
+          return memoDate.toDateString() === now.toDateString();
+        case "last7days":
+          const sevenDaysAgo = new Date(now);
+          sevenDaysAgo.setDate(now.getDate() - 7);
+          return memoDate >= sevenDaysAgo;
+        case "last30days":
+          const thirtyDaysAgo = new Date(now);
+          thirtyDaysAgo.setDate(now.getDate() - 30);
+          return memoDate >= thirtyDaysAgo;
+        case "specific":
+          if (!filterSettings.value.date) return true;
+          const specificDate = new Date(filterSettings.value.date);
+          return memoDate.toDateString() === specificDate.toDateString();
+      }
+    };
+    return hasTag && isWithinDateRange();
+  });
 });
 
 const fetchUserNicknames = async () => {
-  const creatorIdsToFetch = new Set();
-  memos.value.forEach((memo) => {
-    if (memo.creator && !userNicknames.value[memo.creator]) {
-      creatorIdsToFetch.add(memo.creator);
-    }
-  });
+  const creatorIdsToFetch = new Set();
+  memos.value.forEach((memo) => {
+    if (memo.creator && !userNicknames.value[memo.creator]) {
+      creatorIdsToFetch.add(memo.creator);
+    }
+  });
 
-  if (creatorIdsToFetch.size === 0) {
-    return;
-  }
+  if (creatorIdsToFetch.size === 0) {
+    return;
+  }
 
-  try {
-    const userDocsPromises = Array.from(creatorIdsToFetch).map(async (uid) => {
-      const userRef = collection(db, "users");
-      const userQuery = query(userRef, where("__name__", "==", uid));
-      const snapshot = await getDocs(userQuery);
-      return { uid, snapshot };
-    });
+  try {
+    const userDocsPromises = Array.from(creatorIdsToFetch).map(async (uid) => {
+      const userRef = collection(db, "users");
+      const userQuery = query(userRef, where("__name__", "==", uid));
+      const snapshot = await getDocs(userQuery);
+      return { uid, snapshot };
+    });
 
-    const results = await Promise.all(userDocsPromises);
-    results.forEach(({ uid, snapshot }) => {
-      snapshot.forEach((doc) => {
-        const userProfile = doc.data();
-        userNicknames.value[uid] = userProfile.nickname;
-      });
-    });
-  } catch (error) {
-    console.error("Error fetching user nicknames:", error);
-  }
+    const results = await Promise.all(userDocsPromises);
+    results.forEach(({ uid, snapshot }) => {
+      snapshot.forEach((doc) => {
+        const userProfile = doc.data();
+        userNicknames.value[uid] = userProfile.nickname;
+      });
+    });
+  } catch (error) {
+    console.error("Error fetching user nicknames:", error);
+  }
 };
 
 watch(memos, fetchUserNicknames);
 
 const handleFileUpload = (event) => {
-  selectedFile.value = event.target.files[0];
-  if (selectedFile.value) {
-    fileName.value = selectedFile.value.name;
-  } else {
-    fileName.value = "";
-  }
+  selectedFiles.value = Array.from(event.target.files);
 };
 
 const handleEditFileUpload = (event) => {
-  editingFile.value = event.target.files[0];
+  editingFiles.value = Array.from(event.target.files);
 };
 
 const uploadToCloudinary = async (file) => {
-  const cloudName = "dknmcj1qj";
-  const uploadPreset = "our_memo_preset";
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", uploadPreset);
+  const cloudName = "dknmcj1qj";
+  const uploadPreset = "our_memo_preset";
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", uploadPreset);
 
-  uploadProgress.value = "Uploading...";
-  try {
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-    if (!response.ok) {
-      throw new Error(`Cloudinary upload failed with status: ${response.status}`);
+  uploadProgress.value = "Uploading...";
+  try {
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: "POST",
+       body: formData,
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Cloudinary upload failed with status: ${response.status}`);
+    }
+    const data = await response.json();
+    uploadProgress.value = "";
+    return data.secure_url;
+  } catch (error) {
+    console.error("Cloudinary upload failed", error);
+    uploadProgress.value = "Upload failed!";
+    return null;
+  }
+};
+
+const uploadMultipleToCloudinary = async (files) => {
+    if (!files || files.length === 0) return [];
+    const imageUrls = [];
+    uploadProgress.value = `Uploading ${files.length} files...`;
+    for (const file of files) {
+        const url = await uploadToCloudinary(file);
+        if (url) {
+            imageUrls.push(url);
+        } else {
+            // Stop uploading if one fails
+            uploadProgress.value = "Upload failed!";
+            return [];
+        }
     }
-    const data = await response.json();
     uploadProgress.value = "";
-    return data.secure_url;
-  } catch (error) {
-    console.error("Cloudinary upload failed", error);
-    uploadProgress.value = "Upload failed!";
-    return null;
-  }
+    return imageUrls;
 };
 
 const addMemo = async () => {
-  if (!newMemoContent.value) {
-    alert("Please write a memo before adding.");
-    return;
-  }
-  let imageUrl = null;
-  if (selectedFile.value) {
-    uploadProgress.value = "Uploading...";
-    imageUrl = await uploadToCloudinary(selectedFile.value);
-    if (!imageUrl) {
-      uploadProgress.value = "Upload failed!";
-      return;
-    }
-    uploadProgress.value = "Upload successful!";
-  }
+  if (!newMemoContent.value) {
+    alert("Please write a memo before adding.");
+    return;
+  }
+  let imageUrls = [];
+  if (selectedFiles.value.length > 0) {
+    imageUrls = await uploadMultipleToCloudinary(selectedFiles.value);
+    if (imageUrls.length === 0 && selectedFiles.value.length > 0) {
+      uploadProgress.value = "Upload failed!";
+      return;
+    }
+  }
 
-  await store.dispatch("addMemo", {
-    content: newMemoContent.value,
-    imageUrl: imageUrl,
-    tags: selectedNewMemoHashtags.value,
-    creator: auth.currentUser.uid,
-  });
+  await store.dispatch("addMemo", {
+    content: newMemoContent.value,
+    imageUrls: imageUrls,
+    tags: selectedNewMemoHashtags.value,
+    creator: auth.currentUser.uid,
+  });
 
-  cancelInput();
+  cancelInput();
 };
 
 const cancelInput = () => {
-  isInputFormVisible.value = false;
-  newMemoContent.value = "";
-  selectedFile.value = null;
-  fileName.value = "";
-  uploadProgress.value = "";
-  selectedNewMemoHashtags.value = [];
-  if (fileInput.value) {
-    fileInput.value.value = "";
-  }
+  isInputFormVisible.value = false;
+  newMemoContent.value = "";
+  selectedFiles.value = [];
+  fileName.value = "";
+  uploadProgress.value = "";
+  selectedNewMemoHashtags.value = [];
+  if (fileInput.value) {
+    fileInput.value.value = "";
+  }
 };
 
 const deleteMemo = (id) => {
-  store.dispatch("deleteMemo", id);
+  store.dispatch("deleteMemo", id);
 };
 
 const startEditing = (memo) => {
   editingMemoId.value = memo.id;
   editingContent.value = memo.content;
   selectedEditedMemoHashtags.value = memo.tags ? [...memo.tags] : [];
+  // Ensure the existing imageUrls are loaded into the editingFiles array
+  editingFiles.value = memo.imageUrls ? [...memo.imageUrls] : [];
 };
 
-const saveEdit = async (originalImageUrl) => {
-  let imageUrl = originalImageUrl;
+const saveEdit = async (originalMemo) => {
+  let newImageUrls = originalMemo.imageUrls;
 
-  if (editingFile.value) {
-    uploadProgress.value = "Uploading new photo...";
-    const newImageUrl = await uploadToCloudinary(editingFile.value);
-    if (!newImageUrl) {
-      uploadProgress.value = "Upload failed!";
-      return;
-    }
-    imageUrl = newImageUrl;
-  }
-  // CRITICAL FIX: Pass the current user's UID to the editMemo action
-  store.dispatch("editMemo", {
-    id: editingMemoId.value,
-    content: editingContent.value,
-    tags: selectedEditedMemoHashtags.value,
-    imageUrl: imageUrl,
-    creator: auth.currentUser.uid,
-  });
-  cancelEdit();
+  if (editingFiles.value.length > 0) {
+    uploadProgress.value = "Uploading new photo...";
+    const uploadedUrls = await uploadMultipleToCloudinary(editingFiles.value);
+    if (uploadedUrls.length === 0 && editingFiles.value.length > 0) {
+      uploadProgress.value = "Upload failed!";
+      return;
+    }
+    newImageUrls = uploadedUrls;
+  }
+ 
+  store.dispatch("editMemo", {
+    id: editingMemoId.value,
+    content: editingContent.value,
+    tags: selectedEditedMemoHashtags.value,
+    imageUrls: newImageUrls,
+    creator: auth.currentUser.uid,
+  });
+  cancelEdit();
 };
 
 const cancelEdit = () => {
-  editingMemoId.value = null;
-  editingContent.value = "";
-  editingFile.value = null;
-  selectedEditedMemoHashtags.value = [];
+  editingMemoId.value = null;
+  editingContent.value = "";
+  editingFiles.value = [];
+  selectedEditedMemoHashtags.value = [];
 };
-
+const removeEditingImage = (index) => {
+  editingFiles.value.splice(index, 1);
+};
 const toggleHashtag = (tag, type) => {
-  let targetArray =
-    type === "new" ? selectedNewMemoHashtags.value : selectedEditedMemoHashtags.value;
-  const index = targetArray.indexOf(tag);
+  let targetArray =
+    type === "new" ? selectedNewMemoHashtags.value : selectedEditedMemoHashtags.value;
+  const index = targetArray.indexOf(tag);
 
-  if (index > -1) {
-    targetArray.splice(index, 1);
-  } else {
-    if (targetArray.length < maxHashtagsPerItem) {
-      targetArray.push(tag);
-    } else {
-      alert(`You can select a maximum of ${maxHashtagsPerItem} hashtags.`);
-    }
-  }
+  if (index > -1) {
+    targetArray.splice(index, 1);
+  } else {
+    if (targetArray.length < maxHashtagsPerItem) {
+      targetArray.push(tag);
+    } else {
+      alert(`You can select a maximum of ${maxHashtagsPerItem} hashtags.`);
+    }
+  }
 };
 
 watch(
-  filterSettings,
-  (newFilters) => {
-    console.log("Filters updated:", newFilters);
-  },
-  { deep: true }
+  filterSettings,
+  (newFilters) => {
+    console.log("Filters updated:", newFilters);
+  },
+  { deep: true }
 );
 
 onMounted(() => {
-  store.dispatch("fetchMemos");
+  store.dispatch("fetchMemos");
 });
 
 onUnmounted(() => {
-  // There is no listener to unsubscribe from in the current implementation.
-  // If you add a real-time listener later, you'll need to unsubscribe here.
+  // There is no listener to unsubscribe from in the current implementation.
+  // If you add a real-time listener later, you'll need to unsubscribe here.
 });
 </script>
+
 <style scoped>
 /* All of your existing styles for the sidebar go here */
 .page-container {
@@ -621,18 +638,42 @@ h2 {
   flex-grow: 1;
 }
 
+/* This is the new multi-photo grid section */
+.memo-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 5px; /* Adjust the gap between images */
+  margin-bottom: var(--space-md); /* Add some space below the gallery */
+  padding: 5px; /* Add padding to the container */
+  background-color: var(--color-background-form); /* A subtle background for the gallery */
+  border-bottom: 1px solid var(--color-border-dark); /* A divider line */
+}
+
 .memo-photo-wrapper {
+  /* This wrapper helps maintain a consistent aspect ratio for each photo */
   width: 100%;
-  height: 200px;
+  height: 0;
+  padding-bottom: 100%; /* Creates a square container */
+  position: relative;
   overflow: hidden;
 }
 
 .memo-photo {
+  /* This makes the image fill its square container */
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
+  transition: transform 0.3s ease;
+  cursor: pointer;
 }
+
+.memo-photo:hover {
+  transform: scale(1.05); /* A subtle zoom effect on hover */
+}
+
 
 .memo-content {
   padding: var(--space-md);
@@ -697,5 +738,53 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+}
+
+/* New styles for the editing photo grid */
+.editing-photos-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.editing-photo-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border-dark);
+}
+
+.editing-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-photo-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: var(--color-danger);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.remove-photo-button:hover {
+  background-color: var(--color-danger-hover);
 }
 </style>
