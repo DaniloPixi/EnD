@@ -1,11 +1,7 @@
 [build]
-  command = "npm run build"
+  command = "cd netlify/functions && npm install && cd ../.. && npm run build"
   publish = "dist"
   node_version = "22.18.0"
 
 [functions]
   directory = "netlify/functions"
-  [[plugins]]
-  package = "@netlify/plugin-functions-core"
-  [plugins.inputs]
-    functions-dist = "netlify/functions"
