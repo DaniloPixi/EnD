@@ -7,7 +7,7 @@ export interface Memo {
   id: string;
   content: string;
   tags: string[];
-  imageUrls?: string[]; // Use an array for multiple image URLs
+  imageUrls?: string[] | null; // Use an array for multiple image URLs
   timestamp: any;
   creator: string;
 }
@@ -69,10 +69,12 @@ export const store = createStore<State>({
         const data = doc.data();
         const imageUrls = data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
         fetchedMemos.push({
-          id: doc.id,
-          ...data,
-          imageUrls: imageUrls,
-          timestamp: data.timestamp
+        id: doc.id,
+  content: data.content, // Assuming content is available in data
+  tags: data.tags,       // Assuming tags are available in data
+  imageUrls: imageUrls,
+  timestamp: data.timestamp,
+  creator: data.creator, // Assuming creator is available in data
         });
       });
       commit('setMemos', fetchedMemos);
