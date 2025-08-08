@@ -6,11 +6,12 @@
       <div v-else>
         <header class="app-header">
           <div class="header-content">
-            
             <p v-if="currentUserNickname" class="user-label">
               Welcome, {{ currentUserNickname }}
             </p>
-
+            <button class="newMemoButton" @click="subscribeUser">
+              Enable Notifications
+            </button>
             <router-link to="/" class="home-link">
               <h1>My App</h1>
             </router-link>
@@ -101,11 +102,60 @@ const logout = async () => {
     console.error("Logout error:", err);
   }
 };
+
+// A utility function to convert the VAPID public key
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+};
+
+const subscribeUser = async () => {
+  // Check if Service Workers are supported
+  if (!("serviceWorker" in navigator)) {
+    console.log("Service Workers are not supported.");
+    return;
+  }
+
+  // Wait for the Service Worker to be ready
+  const registration = await navigator.serviceWorker.ready;
+
+  // Request push notification permission and subscribe
+  try {
+    const vapidPublicKey = "YOUR_GENERATED_PUBLIC_KEY_HERE"; // <-- PASTE YOUR PUBLIC KEY HERE
+    const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: applicationServerKey,
+    });
+
+    console.log("User subscribed successfully:", subscription);
+
+    // Make a POST request to your Netlify Function
+    await fetch("/.netlify/functions/subscribe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(subscription),
+    });
+
+    console.log("Subscription sent to the backend.");
+  } catch (error) {
+    if (Notification.permission === "denied") {
+      console.log("Permission for notifications was denied.");
+    } else {
+      console.error("Failed to subscribe the user:", error);
+    }
+  }
+};
 </script>
 
 <style>
 /* In your global main.css or App.vue's style block */
-@import url('https://fonts.googleapis.com/css2?family=Allura&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Allura&display=swap");
 /* Global styles for the app */
 :root {
   --color-background-body: #121212;
@@ -139,9 +189,9 @@ body,
 html {
   margin: 0;
   padding: 0;
-  font-family: 'Allura', cursive;
+  font-family: "Allura", cursive;
   background-color: var(--color-background-body);
-  
+
   min-height: 100vh;
 }
 
@@ -150,7 +200,13 @@ html {
   flex-direction: column;
   min-height: 100vh;
   backdrop-filter: blur(10px);
-  background: linear-gradient(270deg, hsla(324, 100%, 34%, 1) 0%, hsla(0, 0%, 0%, 1) 5%, hsla(0, 0%, 0%, 1) 95%, hsla(332, 100%, 38%, 1) 100%);
+  background: linear-gradient(
+    270deg,
+    hsla(324, 100%, 34%, 1) 0%,
+    hsla(0, 0%, 0%, 1) 5%,
+    hsla(0, 0%, 0%, 1) 95%,
+    hsla(332, 100%, 38%, 1) 100%
+  );
 }
 
 .app-header {
@@ -170,9 +226,18 @@ html {
 
 .home-link {
   text-decoration: none;
-  color: #C2005A;
+  color: #c2005a;
 }
-
+.newMemoButton {
+  background-color: var(--color-primary);
+  color: var(--color-text-light);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  font-size: var(--font-size-sm);
+}
 .user-label {
   font-weight: bold;
   font-size: var(--font-size-md);
@@ -215,7 +280,7 @@ html {
   justify-content: center;
   align-items: center;
 }
-.h1{
-  color: #C2005A;
+.h1 {
+  color: #c2005a;
 }
 </style>
