@@ -9,7 +9,7 @@ export default defineConfig({
 
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg','pwa-192x192.png','pwa-512x512.png', '180.png'],
+      includeAssets: ['pwa-192x192.png','pwa-512x512.png', '180.png'],
       manifest: {
         name: 'GruS Corner',
         short_name: 'GruS Corner',
