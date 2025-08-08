@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[context.production.environment]
+  # Add your environment variables here.
+  # For example, if you had a push notification key, you would add it here.
+  # VAPID_PUBLIC_KEY = "your_key_here"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Set headers for Push Notifications if needed
+    Service-Worker-Allowed = "/"
