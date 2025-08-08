@@ -5,3 +5,7 @@
 
 [functions]
   directory = "netlify/functions"
+  [[plugins]]
+  package = "@netlify/plugin-functions-core"
+  [plugins.inputs]
+    functions-dist = "netlify/functions"
